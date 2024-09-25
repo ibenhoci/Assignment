@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 task_id_counter = 1
 
@@ -13,6 +14,7 @@ def load_environment(fn: str):
             "memory": server[list(server.keys())[0]]["memory"]
         })
     return servers
+
 
 
 class InvalidValue(Exception):
@@ -57,13 +59,16 @@ def add_function(server_list, tasks):
         available_memory = convert_memory(server['memory']) - used_memory
         available_cpu = server['cpu'] - used_cpu
 
+        current_time = datetime.now()
+
         if available_cpu >= cpu_value and available_memory >= memory_value:
             added_task = {
                 'id': task_id_counter,
                 'cpu': cpu_value,
                 'memory': memory_value,
                 'timespan': timespan,
-                'remaining_time': timespan
+                'remaining_time': timespan,
+                'added_at': current_time.timestamp()
             }
             tasks_on_server.append(added_task)
             tasks[server_name] = tasks_on_server
@@ -74,18 +79,26 @@ def add_function(server_list, tasks):
         
     raise InvalidValue ("No server available has enough resources for this task")
 
+
 def status_function(tasks, task_id=None):
     
     if not tasks:
         print('No task is currently running.')
         return 
     
+    current_time = datetime.now()
+    in_seconds = current_time.timestamp()
+
     if task_id is not None:
         for server_name, task_lst in tasks.items():
             for task in task_lst:
                 if task['id'] == task_id:
                     print(f'Task ID: {task_id} on Server: {server_name}')
-                    print(f' Task: {task["cpu"]} CPU, {task["memory"]}M, {task["remaining_time"]} Time left')
+                    r_time = task['added_at'] + task['timespan'] - in_seconds
+                    if r_time <= 0:
+                        print(f' Task: {task["cpu"]} CPU, {task["memory"]}M, Task finished!')
+                    else:
+                        print(f' Task: {task["cpu"]} CPU, {task["memory"]}M, {r_time} seconds left')
                     return
         print(f'Task ID {task_id} not found.')
         return 
@@ -95,7 +108,11 @@ def status_function(tasks, task_id=None):
         if not task_lst:
             print(' No tasks running on this server.')
         for task in task_lst:
-            print(f' Task: Task ID: {task['id']}, {task['cpu']} CPU, {task['memory']}M, {task['remaining_time']} Time left')
+            r_time = task['added_at'] + task['timespan'] - in_seconds
+            if r_time <= 0:
+                print(f' Task: Task ID: {task['id']}, {task['cpu']} CPU, {task['memory']}M, Task finished!')
+            else:
+                print(f' Task: Task ID: {task['id']}, {task['cpu']} CPU, {task['memory']}M, {r_time} seconds left')
 
 
 
@@ -109,7 +126,6 @@ def run():
 
     while command != "exit":
         command = input("> ")
-        
         
         if command == 'add':
             try:
@@ -131,6 +147,7 @@ def run():
             print('Exit...')
         else:
             print('Invalid cmd, available cmds are :{cmds}')
+    
     return
 
 
