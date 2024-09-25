@@ -1,5 +1,7 @@
 import json
 
+task_id_counter = 1
+
 def load_environment(fn: str):
     servers = []
     with open(fn, "r") as fl:
@@ -32,6 +34,7 @@ def convert_memory(mem_str: str) -> int:
 
 # This is the adding function
 def add_function(server_list, tasks):
+    global task_id_counter
     cpu_value = int(input ('Cpu value: '))
     if cpu_value <= 0:
         raise InvalidValue("Cpu value cannot be negative!")
@@ -56,6 +59,7 @@ def add_function(server_list, tasks):
 
         if available_cpu >= cpu_value and available_memory >= memory_value:
             added_task = {
+                'id': task_id_counter,
                 'cpu': cpu_value,
                 'memory': memory_value,
                 'timespan': timespan,
@@ -65,12 +69,35 @@ def add_function(server_list, tasks):
             tasks[server_name] = tasks_on_server
 
             print(f"Task assigned to {server_name} with {cpu_value} CPU and {memory_value}M")
+            task_id_counter += 1
             return 
         
     raise InvalidValue ("No server available has enough resources for this task")
 
-def status_function(server_list, tasks):
-    print('Running!')
+def status_function(tasks, task_id=None):
+    
+    if not tasks:
+        print('No task is currently running.')
+        return 
+    
+    if task_id is not None:
+        for server_name, task_lst in tasks.items():
+            for task in task_lst:
+                if task['id'] == task_id:
+                    print(f'Task ID: {task_id} on Server: {server_name}')
+                    print(f' Task: {task["cpu"]} CPU, {task["memory"]}M, {task["remaining_time"]} Time left')
+                    return
+        print(f'Task ID {task_id} not found.')
+        return 
+
+    for server_name, task_lst in tasks.items():
+        print(f'Server: {server_name}')
+        if not task_lst:
+            print(' No tasks running on this server.')
+        for task in task_lst:
+            print(f' Task: Task ID: {task['id']}, {task['cpu']} CPU, {task['memory']}M, {task['remaining_time']} Time left')
+
+
 
 def run():
     command = ""
@@ -93,8 +120,13 @@ def run():
                 print(f'Caught an error: {e}')
         
         elif command == 'status':
-            print('Not implemented for now')
-        
+            try:
+                status_function(tasks)
+                id = int(input('Select a task ID: '))
+                status_function(tasks, id)
+            except ValueError as e:
+                print(f'Caught an error: {e}')
+
         elif command == 'exit':
             print('Exit...')
         else:
